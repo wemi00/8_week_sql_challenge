@@ -1,3 +1,29 @@
+Aufgabe:
+
+https://8weeksqlchallenge.com/case-study-4/
+
+Lösung:
+
+--1. How many unique nodes are there on the Data Bank system?
+SELECT COUNT(DISTINCT node_id) as unique_nodes
+FROM data_bank.customer_nodes;
+
+--2.What is the number of nodes per region?
+SELECT 
+region_name,
+COUNT(DISTINCT node_id) as unique_nodes
+FROM data_bank.customer_nodes
+JOIN data_bank.regions USING(region_id)
+GROUP BY region_name;
+
+--3.How many customers are allocated to each region?
+SELECT 
+region_name,
+COUNT(customer_id) as unique_nodes
+FROM data_bank.customer_nodes
+JOIN data_bank.regions USING(region_id)
+GROUP BY region_name;
+
 --4. How many days on average are customers reallocated to a different node?
 
 -- Beachte, dass eine node auch mehrmals von einem Kunden belegt werden kann. 
@@ -28,23 +54,3 @@ WITH node_days AS (
 SELECT AVG(sum_days_per_node)
 FROM sum_node_days;
 
-
---3.How many customers are allocated to each region?
-SELECT 
-region_name,
-COUNT(customer_id) as unique_nodes
-FROM data_bank.customer_nodes
-JOIN data_bank.regions USING(region_id)
-GROUP BY region_name;
-
---2.What is the number of nodes per region?
-SELECT 
-region_name,
-COUNT(DISTINCT node_id) as unique_nodes
-FROM data_bank.customer_nodes
-JOIN data_bank.regions USING(region_id)
-GROUP BY region_name;
-
---1. How many unique nodes are there on the Data Bank system?
-SELECT COUNT(DISTINCT node_id) as unique_nodes
-FROM data_bank.customer_nodes;
