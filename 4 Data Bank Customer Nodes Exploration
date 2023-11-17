@@ -1,0 +1,50 @@
+--4. How many days on average are customers reallocated to a different node?
+
+-- Beachte, dass eine node auch mehrmals von einem Kunden belegt werden kann. 
+-- Daher wird zunächst die Zeit pro Node berechnet und anschließend in einem zweiten Schritt
+-- die Summe der Zeit pro customer und node -> davon dann Durchschnitt berechnen
+
+
+WITH node_days AS (
+  SELECT 
+    customer_id,
+    node_id,
+    end_date - start_date AS days_in_node
+  FROM data_bank.customer_nodes
+  WHERE end_date != '9999-12-31'
+  --AND customer_id = 1
+  GROUP BY customer_id, node_id, start_date, end_date
+) 
+
+, sum_node_days AS (
+  SELECT
+  customer_id, 
+  node_id,
+  SUM(days_in_node) AS sum_days_per_node
+  FROM node_days
+  GROUP BY customer_id, node_id
+)
+  
+SELECT AVG(sum_days_per_node)
+FROM sum_node_days;
+
+
+--3.How many customers are allocated to each region?
+SELECT 
+region_name,
+COUNT(customer_id) as unique_nodes
+FROM data_bank.customer_nodes
+JOIN data_bank.regions USING(region_id)
+GROUP BY region_name;
+
+--2.What is the number of nodes per region?
+SELECT 
+region_name,
+COUNT(DISTINCT node_id) as unique_nodes
+FROM data_bank.customer_nodes
+JOIN data_bank.regions USING(region_id)
+GROUP BY region_name;
+
+--1. How many unique nodes are there on the Data Bank system?
+SELECT COUNT(DISTINCT node_id) as unique_nodes
+FROM data_bank.customer_nodes;
