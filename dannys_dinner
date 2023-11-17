@@ -1,0 +1,144 @@
+-- 1. What is the total amount each customer spent at the restaurant?
+SELECT customer_id, SUM(price) AS total_amount_per_customer
+FROM dannys_diner.sales  
+JOIN dannys_diner.menu ON dannys_diner.sales.product_id=dannys_diner.menu.product_id
+GROUP BY customer_id;
+
+
+-- 2. How many days has each customer visited the restaurant?
+SELECT customer_id, COUNT(DISTINCT order_date) AS visits
+FROM dannys_diner.sales
+GROUP BY customer_id;
+
+
+-- 3. What was the first item from the menu purchased by each customer?
+B:
+SELECT DISTINCT ON(customer_id) customer_id, product_name
+FROM dannys_diner.sales  
+JOIN dannys_diner.menu USING(product_id);
+
+A:
+WITH CTE AS (
+  SELECT 
+    customer_id,
+    order_date,
+    product_name, 
+    RANK() OVER(PARTITION BY CUSTOMER_ID ORDER BY order_date) as rnk,
+    ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY order_date) as rn 
+  FROM 
+    dannys_diner.SALES as S
+    INNER JOIN dannys_diner.MENU as M on S.product_id = M.product_id
+) 
+SELECT 
+	DISTINCT ON (customer_id) customer_id, product_name
+FROM 
+  	CTE
+WHERE rnk=1;
+
+
+-- 4. What is the most purchased item on the menu and how many times was it purchased by all customers?
+SELECT product_name AS most_purchased, COUNT(product_id) AS times_purchsed
+FROM dannys_diner.sales
+JOIN dannys_diner.menu USING(product_id)
+GROUP BY product_name
+ORDER BY times_purchsed desc limit 1;
+
+
+-- 5. Which item was the most popular for each customer?
+--A
+SELECT DISTINCT ON(customer_id) customer_id, product_name AS most_popular   ->> DISTINCT ON(customer_id) erste customer id der Gruppe wegen desc
+FROM dannys_diner.sales
+JOIN dannys_diner.menu USING(product_id)
+GROUP BY customer_id, product_name    -->>> alle Übereinstimmungen von customer_id, product_name werden ausgegeben!! -> quaasi da wo Gruppen erstellt werden können
+ORDER BY customer_id, COUNT(product_id) desc;  --->> die Grupppen Nach Customer und Anzahl Product id sortieren
+
+--B
+WITH most_popular AS (
+  SELECT 
+    sales.customer_id, 
+    menu.product_name, 
+    COUNT(menu.product_id) AS order_count,
+    DENSE_RANK() OVER (
+      PARTITION BY sales.customer_id 
+      ORDER BY COUNT(sales.customer_id) DESC) AS rank
+  FROM dannys_diner.menu
+  INNER JOIN dannys_diner.sales
+    ON menu.product_id = sales.product_id
+  GROUP BY sales.customer_id, menu.product_name
+)
+
+SELECT 
+  customer_id, 
+  product_name, 
+  order_count
+FROM most_popular 
+WHERE rank = 1;
+
+
+-- 6. Which item was purchased first by the customer after they became a member?
+SELECT DISTINCT ON(customer_id) customer_id, product_name   -->> wähle nur die ersten customer ids aus, die distinct sind.
+FROM dannys_diner.sales
+JOIN dannys_diner.menu USING(product_id)  
+JOIN dannys_diner.members USING(customer_id)			--->>> JOIN Table ist immmer nach den letzten JOIN Befehl sortiert!!!!
+WHERE order_date > join_date;  -->> nimmt den nächsten Einkauf nach der Regestrierung
+-->>> Hier ist DISTINCT ON möglich, da dates aus tables bereits nach der Zeit sortiert sind
+
+-- 7. Which item was purchased just before the customer became a member?
+SELECT DISTINCT ON(customer_id) customer_id, product_name
+FROM dannys_diner.sales
+JOIN dannys_diner.menu USING(product_id)
+JOIN dannys_diner.members USING(customer_id)
+WHERE order_date < join_date
+->> wählt aus den dates vor der Mitgliedschaft das erste aus... -->> muss noch in aufsteigender Reihenfolge sortiert werden
+->> zudem gelten die dates nur bezogen auf den Kunden und das Produkt daher -->> 
+ORDER BY customer_id, order_date desc, product_name;
+
+
+-- 8. What is the total items and amount spent for each member before they became a member?
+SELECT customer_id, SUM(price), COUNT(product_id)
+FROM dannys_diner.sales
+JOIN dannys_diner.menu USING(product_id)
+JOIN dannys_diner.members USING(customer_id)
+WHERE order_date < join_date
+GROUP BY customer_id
+
+
+-- 9.  If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
+SELECT customer_id, SUM(CASE WHEN product_id=1 THEN price*20 ELSE price*10 END) AS Points
+FROM dannys_diner.sales
+JOIN dannys_diner.menu USING(product_id)
+GROUP BY customer_id
+
+
+-- 10. In the first week after a customer joins the program (including their join date) they earn 2x points on 
+all items, not just sushi - how many points do customer A and B have at the end of January?
+
+WITH customers_data AS (
+  SELECT 
+    sales.customer_id, 
+    sales.order_date,  
+    menu.product_name, 
+    menu.price,
+    CASE
+      WHEN members.join_date > sales.order_date THEN 'N'
+      WHEN members.join_date <= sales.order_date THEN 'Y'
+      ELSE 'N' END AS member_status
+  FROM dannys_diner.sales
+  LEFT JOIN dannys_diner.members
+    ON sales.customer_id = members.customer_id
+  INNER JOIN dannys_diner.menu
+    ON sales.product_id = menu.product_id
+)
+
+SELECT 
+  *, 
+  CASE
+    WHEN member_status = 'N' then NULL
+    ELSE RANK () OVER (
+      PARTITION BY customer_id, member_status
+      ORDER BY order_date
+  ) END AS ranking
+FROM customers_data;
+
+
+
