@@ -72,7 +72,7 @@ WITH check_actions_month AS
      FROM check_actions_month
     )
     
-SELECT DISTINCT ON(customer_id) customer_id, SUM(balance) OVER(PARTITION BY customer_id ORDER BY mth) AS balance
+SELECT DISTINCT ON(customer_id) customer_id, SUM(balance) OVER(PARTITION BY customer_id) AS balance
      FROM check_balance_month
      ORDER BY customer_id, mth DESC;
 
