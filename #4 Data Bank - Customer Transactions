@@ -1,3 +1,6 @@
+Aufgabenstellung: 
+https://8weeksqlchallenge.com/case-study-4/
+
 -- 1. What is the unique count and total amount for each transaction type?
 
 SELECT 
