@@ -79,5 +79,24 @@ SELECT DISTINCT ON(customer_id) customer_id, SUM(balance) OVER(PARTITION BY cust
 
 -- 5. What is the percentage of customers who increase their closing balance by more than 5%?
 
-
+WITH check_actions_month AS 
+    (SELECT customer_id, DATE_PART('month', txn_date) AS mth,
+    	SUM(txn_amount) FILTER (WHERE txn_type = 'deposit') AS deposit,
+    	SUM(txn_amount) FILTER (WHERE txn_type = 'purchase') AS purchase,
+    	SUM(txn_amount) FILTER (WHERE txn_type = 'withdrawal') AS withdrawal
+     FROM data_bank.customer_transactions
+     GROUP BY customer_id, mth
+    ),
+    check_balance_month AS
+    (SELECT customer_id, mth, (COALESCE(deposit,0) - COALESCE(purchase,0) - COALESCE(withdrawal,0)) AS balance
+     FROM check_actions_month
+    ),
+    customer_fist_balance AS 
+    (SELECT DISTINCT ON (customer_id) customer_id, balance AS fist_balance FROM check_balance_month
+	ORDER BY customer_id, mth
+     ),
+     customer_last_balance AS 
+    (SELECT DISTINCT ON (customer_id) customer_id, balance AS last_balance FROM check_balance_month
+	ORDER BY customer_id, mth DESC
+     )
 
